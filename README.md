@@ -127,6 +127,12 @@ struct MyComponent;
 4. When a component is inserted, the hook validates expected components exist
 5. If any are missing, it panics with a descriptive message
 
+## Limitations
+
+**Validates insertion only, not removal.** If you later remove an expected component from an entity, no error occurs. This keeps the implementation simple and covers the main use case: catching mistakes at spawn time.
+
+If you need removal protection, consider using Bevy's `on_remove` hooks directly or waiting for archetype invariants.
+
 ## Future of This Crate
 
 This crate may become unnecessary when Bevy adds native support for non-defaultable required components. Relevant upstream discussions:

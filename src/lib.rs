@@ -76,6 +76,12 @@
 //! | Runtime cost | Archetype lookup | Component existence check |
 //! | Use case | Convenience bundles | Bug detection |
 //!
+//! ## Limitations
+//!
+//! **Validates insertion only, not removal.** If you later remove an expected component
+//! from an entity, no error occurs. This keeps the implementation simple and covers
+//! the main use case: catching mistakes at spawn time.
+//!
 //! ## Future of This Crate
 //!
 //! This crate may become unnecessary when Bevy adds native support for non-defaultable

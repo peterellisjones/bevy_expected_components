@@ -141,7 +141,7 @@ Until then, this crate provides a simple, opt-in solution for development-time v
 
 | bevy | bevy_expected_components |
 |------|--------------------------|
-| 0.15 | 0.1                      |
+| 0.18 | 0.1                      |
 
 ## License
 

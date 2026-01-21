@@ -88,8 +88,8 @@
 use std::any::TypeId;
 
 use bevy_app::{App, Plugin};
-use bevy_ecs::component::{Component, ComponentId};
-use bevy_ecs::entity::Entity;
+use bevy_ecs::component::Component;
+use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::world::{DeferredWorld, World};
 
 // Re-export for macro use
@@ -199,13 +199,10 @@ impl Plugin for ExpectedComponentsPlugin {
 
 /// Validation hook called when a component with expectations is inserted.
 #[allow(clippy::needless_pass_by_value)] // Bevy hook signature requires owned DeferredWorld
-fn validate_expected<T: ExpectComponents>(
-    world: DeferredWorld,
-    entity: Entity,
-    _component_id: ComponentId,
-) {
+fn validate_expected<T: ExpectComponents>(world: DeferredWorld, ctx: HookContext) {
     let expected = T::expected_components();
     let names = T::expected_component_names();
+    let entity = ctx.entity;
 
     for (type_id, name) in expected.iter().zip(names.iter()) {
         let component_id = world.components().get_id(*type_id);

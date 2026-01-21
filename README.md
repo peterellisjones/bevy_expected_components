@@ -4,7 +4,7 @@ Runtime validation for Bevy component dependencies. Like `#[require]` but panics
 
 ## Performance Warning
 
-**This crate adds runtime overhead.** Every time a component with `#[expect(...)]` is inserted, the plugin checks that all expected components exist on the entity.
+**This crate adds runtime overhead.** Every time a component with `#[expects(...)]` is inserted, the plugin checks that all expected components exist on the entity.
 
 Enable only in development and test builds:
 
@@ -23,7 +23,7 @@ Bevy's `#[require(T)]` automatically inserts missing components using `Default`.
 - You want bugs to surface immediately rather than silently using defaults
 - The required component has no sensible default
 
-`#[expect(T)]` solves this by panicking if expected components are missing, making bugs immediately visible during development.
+`#[expects(T)]` solves this by panicking if expected components are missing, making bugs immediately visible during development.
 
 ## Installation
 
@@ -40,7 +40,7 @@ use bevy_expected_components::prelude::*;
 
 // PhysicsBody expects Transform and Velocity to exist when inserted
 #[derive(Component, ExpectComponents)]
-#[expect(Transform, Velocity)]
+#[expects(Transform, Velocity)]
 struct PhysicsBody;
 
 #[derive(Component, Default)]
@@ -83,8 +83,8 @@ The stack trace points to the spawn site, making debugging straightforward.
 
 ## Comparison with `#[require]`
 
-| Feature | `#[require]` | `#[expect]` |
-|---------|--------------|-------------|
+| Feature | `#[require]` | `#[expects]` |
+|---------|--------------|--------------|
 | Missing component | Auto-inserted via `Default` | Panics |
 | Requires `Default` | Yes | No |
 | Runtime cost | Archetype lookup | Component check |
@@ -98,14 +98,14 @@ You can list multiple components in one attribute or use multiple attributes:
 ```rust
 // Single attribute with multiple components
 #[derive(Component, ExpectComponents)]
-#[expect(Transform, Velocity, Health)]
+#[expects(Transform, Velocity, Health)]
 struct Enemy;
 
 // Multiple attributes (equivalent)
 #[derive(Component, ExpectComponents)]
-#[expect(Transform)]
-#[expect(Velocity)]
-#[expect(Health)]
+#[expects(Transform)]
+#[expects(Velocity)]
+#[expects(Health)]
 struct Enemy;
 ```
 
@@ -115,7 +115,7 @@ Full paths work too:
 
 ```rust
 #[derive(Component, ExpectComponents)]
-#[expect(bevy::transform::components::Transform)]
+#[expects(bevy::transform::components::Transform)]
 struct MyComponent;
 ```
 
@@ -126,6 +126,16 @@ struct MyComponent;
 3. `ExpectedComponentsPlugin` installs `on_add` hooks for all registered types
 4. When a component is inserted, the hook validates expected components exist
 5. If any are missing, it panics with a descriptive message
+
+## Future of This Crate
+
+This crate may become unnecessary when Bevy adds native support for non-defaultable required components. Relevant upstream discussions:
+
+- [Issue #16194: Require components that can't be defaulted](https://github.com/bevyengine/bevy/issues/16194) - Proposes `#[require(Component(explicit))]` syntax
+- [Issue #18717: Support required components which have no sensible default](https://github.com/bevyengine/bevy/issues/18717) - Proposes `#[must_provide(Component)]`
+- Archetype invariants - A future Bevy feature that would enforce component relationships at the type level
+
+Until then, this crate provides a simple, opt-in solution for development-time validation.
 
 ## Bevy Version Compatibility
 

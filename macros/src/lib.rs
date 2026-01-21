@@ -11,7 +11,7 @@ use syn::{parse_macro_input, DeriveInput, Path, Token};
 
 /// Derive macro for generating `ExpectComponents` implementation.
 ///
-/// Use with the `#[expect(...)]` attribute to specify which components must
+/// Use with the `#[expects(...)]` attribute to specify which components must
 /// exist when this component is inserted.
 ///
 /// # Example
@@ -21,18 +21,18 @@ use syn::{parse_macro_input, DeriveInput, Path, Token};
 /// use bevy_expected_components::prelude::*;
 ///
 /// #[derive(Component, ExpectComponents)]
-/// #[expect(Transform, Velocity)]
+/// #[expects(Transform, Velocity)]
 /// struct PhysicsBody;
 /// ```
 ///
 /// # Multiple Attributes
 ///
-/// You can use multiple `#[expect(...)]` attributes:
+/// You can use multiple `#[expects(...)]` attributes:
 ///
 /// ```rust,ignore
 /// #[derive(Component, ExpectComponents)]
-/// #[expect(Transform)]
-/// #[expect(Velocity)]
+/// #[expects(Transform)]
+/// #[expects(Velocity)]
 /// struct PhysicsBody;
 /// ```
 ///
@@ -42,19 +42,19 @@ use syn::{parse_macro_input, DeriveInput, Path, Token};
 ///
 /// ```rust,ignore
 /// #[derive(Component, ExpectComponents)]
-/// #[expect(bevy::transform::components::Transform)]
+/// #[expects(bevy::transform::components::Transform)]
 /// struct MyComponent;
 /// ```
-#[proc_macro_derive(ExpectComponents, attributes(expect))]
+#[proc_macro_derive(ExpectComponents, attributes(expects))]
 pub fn derive_expect_components(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
-    // Extract component paths from all #[expect(...)] attributes
+    // Extract component paths from all #[expects(...)] attributes
     let expected: Vec<Path> = input
         .attrs
         .iter()
-        .filter(|attr| attr.path().is_ident("expect"))
+        .filter(|attr| attr.path().is_ident("expects"))
         .flat_map(|attr| {
             attr.parse_args_with(Punctuated::<Path, Token![,]>::parse_terminated)
                 .unwrap_or_default()
@@ -64,7 +64,7 @@ pub fn derive_expect_components(input: TokenStream) -> TokenStream {
     if expected.is_empty() {
         return syn::Error::new_spanned(
             &input.ident,
-            "ExpectComponents derive requires at least one #[expect(Component)] attribute",
+            "ExpectComponents derive requires at least one #[expects(Component)] attribute",
         )
         .to_compile_error()
         .into();
@@ -96,7 +96,9 @@ pub fn derive_expect_components(input: TokenStream) -> TokenStream {
         }
 
         ::bevy_expected_components::inventory::submit! {
-            ::bevy_expected_components::ExpectRegistration::of::<#name>()
+            ::bevy_expected_components::ExpectRegistration::new(
+                ::bevy_expected_components::register_hooks_for::<#name>
+            )
         }
     };
 

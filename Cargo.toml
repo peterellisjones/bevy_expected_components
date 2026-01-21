@@ -10,12 +10,14 @@ categories = ["game-development", "development-tools::debugging"]
 readme = "README.md"
 
 [dependencies]
-bevy = { version = "0.15", default-features = false, features = ["bevy_ecs"] }
+bevy_ecs = "0.15"
+bevy_app = "0.15"
 inventory = "0.3"
 bevy_expected_components_macros = { path = "macros", version = "0.1.0" }
 
 [dev-dependencies]
-bevy = { version = "0.15", default-features = false, features = ["bevy_ecs"] }
+bevy_ecs = "0.15"
+bevy_app = "0.15"
 
 [workspace]
 members = ["macros"]

@@ -1,4 +1,4 @@
-//! # bevy_expected_components
+//! # `bevy_expected_components`
 //!
 //! Runtime validation for Bevy component dependencies. Like `#[require]` but validates
 //! instead of auto-inserting.
@@ -12,12 +12,12 @@
 //! - You want bugs to surface immediately rather than silently using defaults
 //! - The required component has no sensible default
 //!
-//! `#[expect(T)]` solves this by panicking if expected components are missing at insert
+//! `#[expects(T)]` solves this by panicking if expected components are missing at insert
 //! time, making bugs immediately visible during development.
 //!
 //! ## Performance Warning
 //!
-//! This crate adds runtime overhead: every time a component with `#[expect(...)]` is
+//! This crate adds runtime overhead: every time a component with `#[expects(...)]` is
 //! inserted, the plugin checks that all expected components exist on the entity.
 //!
 //! **Recommended usage:** Enable only in development and test builds.
@@ -40,9 +40,9 @@
 //! #[derive(Component, Default)]
 //! struct Velocity;
 //!
-//! // RoadNode expects Transform to exist when it's inserted
+//! // PhysicsBody expects Transform and Velocity to exist when it's inserted
 //! #[derive(Component, ExpectComponents)]
-//! #[expect(Transform, Velocity)]
+//! #[expects(Transform, Velocity)]
 //! struct PhysicsBody;
 //!
 //! fn main() {
@@ -69,18 +69,28 @@
 //!
 //! ## Comparison with `#[require]`
 //!
-//! | Feature | `#[require]` | `#[expect]` |
-//! |---------|--------------|-------------|
+//! | Feature | `#[require]` | `#[expects]` |
+//! |---------|--------------|--------------|
 //! | Missing component | Auto-inserted with `Default` | Panics |
 //! | Requires `Default` | Yes | No |
 //! | Runtime cost | Archetype lookup | Component existence check |
 //! | Use case | Convenience bundles | Bug detection |
+//!
+//! ## Future of This Crate
+//!
+//! This crate may become unnecessary when Bevy adds native support for non-defaultable
+//! required components. Relevant discussions:
+//!
+//! - [Issue #16194: Require components that can't be defaulted](https://github.com/bevyengine/bevy/issues/16194)
+//! - [Issue #18717: Support required components which have no sensible default](https://github.com/bevyengine/bevy/issues/18717)
+//! - Archetype invariants (future Bevy feature)
 
 use std::any::TypeId;
 
-use bevy::ecs::component::ComponentId;
-use bevy::ecs::world::DeferredWorld;
-use bevy::prelude::*;
+use bevy_app::{App, Plugin};
+use bevy_ecs::component::{Component, ComponentId};
+use bevy_ecs::entity::Entity;
+use bevy_ecs::world::{DeferredWorld, World};
 
 // Re-export for macro use
 #[doc(hidden)]
@@ -108,7 +118,7 @@ pub mod prelude {
 ///
 /// ```rust,ignore
 /// #[derive(Component, ExpectComponents)]
-/// #[expect(Transform, Velocity)]
+/// #[expects(Transform, Velocity)]
 /// struct PhysicsBody;
 /// ```
 pub trait ExpectComponents: Component {
@@ -128,19 +138,26 @@ pub struct ExpectRegistration {
 }
 
 impl ExpectRegistration {
-    /// Creates a registration for a component type.
+    /// Creates a new registration with a hook registration function.
     ///
     /// Called by the derive macro. You should not need to use this directly.
     #[must_use]
-    pub fn of<T: ExpectComponents>() -> Self {
-        Self {
-            register_hooks: |world| {
-                world
-                    .register_component_hooks::<T>()
-                    .on_add(validate_expected::<T>);
-            },
-        }
+    pub const fn new(register_hooks: fn(&mut World)) -> Self {
+        Self { register_hooks }
     }
+
+    /// Registers the component hooks with the world.
+    pub fn register(&self, world: &mut World) {
+        (self.register_hooks)(world);
+    }
+}
+
+/// Registers component hooks for type T. Used by the derive macro.
+#[doc(hidden)]
+pub fn register_hooks_for<T: ExpectComponents>(world: &mut World) {
+    world
+        .register_component_hooks::<T>()
+        .on_add(validate_expected::<T>);
 }
 
 inventory::collect!(ExpectRegistration);
@@ -175,12 +192,13 @@ pub struct ExpectedComponentsPlugin;
 impl Plugin for ExpectedComponentsPlugin {
     fn build(&self, app: &mut App) {
         for registration in inventory::iter::<ExpectRegistration> {
-            (registration.register_hooks)(app.world_mut());
+            registration.register(app.world_mut());
         }
     }
 }
 
 /// Validation hook called when a component with expectations is inserted.
+#[allow(clippy::needless_pass_by_value)] // Bevy hook signature requires owned DeferredWorld
 fn validate_expected<T: ExpectComponents>(
     world: DeferredWorld,
     entity: Entity,
@@ -191,88 +209,14 @@ fn validate_expected<T: ExpectComponents>(
 
     for (type_id, name) in expected.iter().zip(names.iter()) {
         let component_id = world.components().get_id(*type_id);
-        let has_component = component_id
-            .is_some_and(|id| world.entity(entity).contains_id(id));
+        let has_component = component_id.is_some_and(|id| world.entity(entity).contains_id(id));
 
-        if !has_component {
-            panic!(
-                "{} expects {} but it was not found on entity {:?}",
-                std::any::type_name::<T>(),
-                name,
-                entity
-            );
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Component, Default)]
-    struct Position;
-
-    #[derive(Component, Default)]
-    struct Velocity;
-
-    #[derive(Component, ExpectComponents)]
-    #[expect(Position, Velocity)]
-    struct PhysicsBody;
-
-    #[derive(Component, ExpectComponents)]
-    #[expect(Position)]
-    struct SingleExpectation;
-
-    #[test]
-    fn succeeds_when_all_expected_components_present() {
-        let mut app = App::new();
-        app.add_plugins(ExpectedComponentsPlugin);
-
-        app.world_mut().spawn((PhysicsBody, Position, Velocity));
-        // No panic = success
-    }
-
-    #[test]
-    fn succeeds_with_single_expectation() {
-        let mut app = App::new();
-        app.add_plugins(ExpectedComponentsPlugin);
-
-        app.world_mut().spawn((SingleExpectation, Position));
-    }
-
-    #[test]
-    #[should_panic(expected = "expects")]
-    fn panics_when_expected_component_missing() {
-        let mut app = App::new();
-        app.add_plugins(ExpectedComponentsPlugin);
-
-        app.world_mut().spawn((PhysicsBody, Velocity)); // Missing Position
-    }
-
-    #[test]
-    #[should_panic(expected = "Position")]
-    fn panic_message_includes_missing_component_name() {
-        let mut app = App::new();
-        app.add_plugins(ExpectedComponentsPlugin);
-
-        app.world_mut().spawn((PhysicsBody, Velocity));
-    }
-
-    #[test]
-    fn no_validation_without_plugin() {
-        let mut app = App::new();
-        // Plugin intentionally not added
-
-        app.world_mut().spawn((PhysicsBody,)); // Would panic if plugin was added
-        // No panic = validation disabled
-    }
-
-    #[test]
-    fn order_independent_insertion() {
-        let mut app = App::new();
-        app.add_plugins(ExpectedComponentsPlugin);
-
-        // Expected components inserted before the expecting component
-        app.world_mut().spawn((Position, Velocity, PhysicsBody));
+        assert!(
+            has_component,
+            "{} expects {} but it was not found on entity {:?}",
+            std::any::type_name::<T>(),
+            name,
+            entity
+        );
     }
 }

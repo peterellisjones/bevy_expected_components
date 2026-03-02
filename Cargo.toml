@@ -1,6 +1,6 @@
 [package]
 name = "bevy_expected_components"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Runtime validation for Bevy component dependencies"
@@ -10,14 +10,14 @@ categories = ["game-development", "development-tools::debugging"]
 readme = "README.md"
 
 [dependencies]
-bevy_ecs = "0.18"
-bevy_app = "0.18"
+bevy_ecs = "^0.18.0"
+bevy_app = "^0.18.0"
 inventory = "0.3"
-bevy_expected_components_macros = { path = "macros", version = "0.1.0" }
+bevy_expected_components_macros = { path = "macros", version = "0.1.1" }
 
 [dev-dependencies]
-bevy_ecs = "0.18"
-bevy_app = "0.18"
+bevy_ecs = "^0.18.0"
+bevy_app = "^0.18.0"
 
 [workspace]
 members = ["macros"]

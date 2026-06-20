@@ -147,7 +147,12 @@ Until then, this crate provides a simple, opt-in solution for development-time v
 
 | bevy | bevy_expected_components |
 |------|--------------------------|
+| 0.19 | 0.2                      |
 | 0.18 | 0.1                      |
+
+## AI assistance
+
+This crate was developed with the help of AI coding tools.
 
 ## License
 

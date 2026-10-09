@@ -29,7 +29,7 @@ Bevy's `#[require(T)]` automatically inserts missing components using `Default`.
 
 ```toml
 [dependencies]
-bevy_expected_components = "0.1"
+bevy_expected_components = "0.3"
 ```
 
 ## Usage
@@ -147,6 +147,7 @@ Until then, this crate provides a simple, opt-in solution for development-time v
 
 | bevy | bevy_expected_components |
 |------|--------------------------|
+| 0.20 | 0.3                      |
 | 0.19 | 0.2                      |
 | 0.18 | 0.1                      |
 
